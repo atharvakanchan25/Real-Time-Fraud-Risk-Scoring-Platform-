@@ -1,17 +1,33 @@
 spring:
   application:
     name: scoring-service
-  config:
-    import: "optional:configserver:http://localhost:8888"
+  datasource:
+    url: jdbc:postgresql://localhost:5432/frauddb
+    username: fraud
+    password: fraud
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
       group-id: scoring-group
+      auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.fraudplatform.common.dto"
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        retries: 2147483647
 
 server:
   port: 8084
@@ -21,3 +37,14 @@ management:
     web:
       exposure:
         include: health,info
+
+fraud:
+  rules:
+    amount-threshold: 10000
+    velocity-max-count: 5
+    velocity-window-minutes: 5
+
+kafka:
+  topics:
+    payment-events: payment-events
+    decision-events: decision-events

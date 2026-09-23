@@ -1,6 +1,6 @@
-package com.fraudplatform.ingestion.repository;
+package com.fraudplatform.scoring.repository;
 
-import com.fraudplatform.ingestion.entity.Transaction;
+import com.fraudplatform.scoring.entity.Transaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 

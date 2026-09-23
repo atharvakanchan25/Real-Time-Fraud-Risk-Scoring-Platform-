@@ -1,12 +1,7 @@
-package com.fraudplatform.ingestion.service;
+package com.fraudplatform.scoring.service;
 
 import org.springframework.stereotype.Service;
 
-/**
- * Stub geolocation service. In production this would call a real GeoIP provider.
- * IPs starting with "10." or "192.168." are treated as domestic (US).
- * A small set of known prefixes map to specific countries; everything else → "XX" (unknown).
- */
 @Service
 public class GeoStubService {
 
