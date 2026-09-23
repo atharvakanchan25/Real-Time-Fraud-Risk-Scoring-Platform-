@@ -24,8 +24,8 @@ public class RedisGuard {
     private final TimeLimiter enrichmentTimeLimiter;
     private final CircuitBreaker enrichmentCircuitBreaker;
 
-    // Virtual threads: cheap, no pool exhaustion risk under high concurrency
-    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+    // Bounded cached pool — virtual threads require Java 21+; cached threads are fine at this scale
+    private final ExecutorService executor = Executors.newCachedThreadPool();
 
     public <T> T call(Callable<T> redisCall, T fallback) {
         try {

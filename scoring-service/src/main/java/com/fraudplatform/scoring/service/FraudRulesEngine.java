@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -32,41 +33,47 @@ public class FraudRulesEngine {
         }
     }
 
-    public RuleResult evaluate(PaymentEvent event) {
-        // Enrich first — records velocity in Redis, fetches reputation
+    /**
+     * Evaluates rules and blends with an optional ML score.
+     *
+     * Blending strategy (when ML score is present):
+     *   finalScore = 0.6 * rulesScore + 0.4 * (mlProbability * 100)
+     * When ML is unavailable (circuit open / timeout), falls back to rules-only:
+     *   finalScore = rulesScore
+     */
+    public RuleResult evaluate(PaymentEvent event, Optional<Double> mlProbability) {
         EnrichedFeatures features = enrichmentFacade.enrich(
                 event.getUserId(), event.getDeviceId(), event.getIpAddress());
 
         List<String> triggered = new ArrayList<>();
 
-        // Rule 1 — high amount
-        if (event.getAmount().compareTo(amountThreshold) > 0) {
+        if (event.getAmount().compareTo(amountThreshold) > 0)
             triggered.add("HIGH_AMOUNT");
-        }
 
-        // Rule 2 — Redis sliding-window velocity (falls back gracefully when velocityCount == -1)
-        if (features.velocityCount() >= velocityMaxCount) {
+        if (features.velocityCount() >= velocityMaxCount)
             triggered.add("HIGH_VELOCITY");
-        }
 
-        // Rule 3 — geo mismatch
         String ipCountry = geoStubService.countryForIp(event.getIpAddress());
-        if (!"XX".equals(ipCountry) && !ipCountry.equalsIgnoreCase(event.getCardCountry())) {
+        if (!"XX".equals(ipCountry) && !ipCountry.equalsIgnoreCase(event.getCardCountry()))
             triggered.add("GEO_MISMATCH");
-        }
 
-        // Rule 4 — risky device
-        if (!features.deviceRiskFlags().isEmpty()) {
+        if (!features.deviceRiskFlags().isEmpty())
             triggered.add("RISKY_DEVICE");
-        }
 
-        // Rule 5 — risky IP (TOR exit / datacenter)
-        if (!features.ipRiskFlags().isEmpty()) {
+        if (!features.ipRiskFlags().isEmpty())
             triggered.add("RISKY_IP");
-        }
 
-        // Score: each rule contributes 20 points, capped at 100
-        int score = Math.min(100, triggered.size() * 20);
-        return new RuleResult(triggered, score, features);
+        int rulesScore = Math.min(100, triggered.size() * 20);
+
+        int finalScore = mlProbability
+                .map(p -> (int) Math.round(0.6 * rulesScore + 0.4 * (p * 100)))
+                .orElse(rulesScore);
+
+        return new RuleResult(triggered, finalScore, features);
+    }
+
+    /** Convenience overload — rules-only, no ML score. */
+    public RuleResult evaluate(PaymentEvent event) {
+        return evaluate(event, Optional.empty());
     }
 }

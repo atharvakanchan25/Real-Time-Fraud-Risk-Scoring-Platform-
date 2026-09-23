@@ -148,3 +148,98 @@ cd scoring-service && mvn spring-boot:run &
 # Run load test
 k6 run load-test/enrichment-load-test.js
 ```
+
+---
+
+## Phase 3b — Pluggable rules engine
+
+### DSL choice: Spring Expression Language (SpEL), not Drools
+
+**SpEL was chosen.** Justification:
+
+| Concern | SpEL | Drools |
+|---|---|---|
+| Dependencies | Zero — already in `spring-core` | KIE runtime ~50 MB, DRL classloader |
+| Rule storage | Plain `VARCHAR(1024)` column | DRL file or byte-compiled artifact |
+| Hot reload | `expressionCache.clear()` — one line | KIE session drain + KieContainer rebuild |
+| Analyst readability | `amount > 5000 && velocityCount >= 3` | DRL syntax with `when/then` blocks |
+| Expressiveness | Sufficient for predicate rules | Full forward-chaining inference |
+
+Drools is the right choice when rules need to **chain** (rule A's output triggers rule B),
+require **conflict resolution strategies**, or when a business analyst needs a visual
+authoring tool (Decision Central). For a predicate-only fraud signal engine where each
+rule independently returns a weight, SpEL is strictly simpler.
+
+### How "no redeploy" works
+
+```
+POST /rules  →  RuleService.create()
+                  └─ ruleRepository.save()          (persisted to Postgres)
+                  └─ spelRulesEngine.invalidateCache()  (clears compiled expression map)
+
+POST /rules/evaluate  →  SpelRulesEngine.evaluate()
+                           └─ ruleRepository.findByActiveTrue()  (always live DB read)
+                           └─ expressionCache.computeIfAbsent()  (recompiles on first use)
+```
+
+The active-rule list is **always read from Postgres** on every evaluation call.
+The compiled `Expression` objects are cached in a `ConcurrentHashMap` keyed by rule ID
+and cleared on any mutation. This means:
+
+- A new rule is visible to the **very next** evaluation call after `POST /rules`.
+- A deactivated rule is excluded from the **very next** call after `PATCH /rules/{id}`.
+- No restart, no redeploy, no cache TTL to wait for.
+
+### Versioning and audit
+
+- `version` column increments on every `conditionExpression` change, preserving history
+  in-place (no separate history table needed for the rule row itself).
+- `rule_audit_log` table records every CREATE / UPDATE / ACTIVATE / DEACTIVATE with:
+  - `changed_by` — HTTP Basic principal (analyst username)
+  - `changed_at` — server timestamp
+  - `before_state` / `after_state` — full JSON snapshots of the rule row
+
+### Security
+
+HTTP Basic auth (Spring Security) is required for all `/rules/**` endpoints.
+The authenticated principal is injected via `Authentication auth` in the controller
+and passed through to the audit log — every change is attributable.
+
+### Data model
+
+```sql
+CREATE TABLE rules (
+  id                  BIGSERIAL PRIMARY KEY,
+  name                TEXT NOT NULL,
+  condition_expression TEXT NOT NULL,
+  weight              INT NOT NULL,
+  active              BOOLEAN NOT NULL DEFAULT TRUE,
+  version             INT NOT NULL DEFAULT 1,
+  created_at          TIMESTAMPTZ NOT NULL,
+  updated_at          TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE rule_audit_log (
+  id           BIGSERIAL PRIMARY KEY,
+  rule_id      BIGINT NOT NULL,
+  rule_name    TEXT NOT NULL,
+  action       VARCHAR(20) NOT NULL,   -- CREATE|UPDATE|ACTIVATE|DEACTIVATE
+  changed_by   TEXT NOT NULL,
+  changed_at   TIMESTAMPTZ NOT NULL,
+  before_state TEXT,
+  after_state  TEXT
+);
+```
+
+### Demo
+
+```bash
+# Start Postgres
+docker compose up -d postgres
+
+# Start rules-service
+cd rules-service && mvn spring-boot:run
+
+# Run the no-redeploy demo
+bash demo/rules-no-redeploy.sh
+```

@@ -74,3 +74,17 @@ services:
 volumes:
   postgres_data:
   redis_data:
+
+  ml-inference:
+    image: eclipse-temurin:17-jre
+    container_name: ml-inference
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./ml-inference-service/target/ml-inference-service-0.0.1-SNAPSHOT.jar:/app.jar
+    command: ["java", "-jar", "/app.jar"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8088/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

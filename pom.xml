@@ -27,6 +27,7 @@
         <module>decision-service</module>
         <module>case-management-service</module>
         <module>feedback-service</module>
+        <module>ml-inference-service</module>
     </modules>
 
     <properties>

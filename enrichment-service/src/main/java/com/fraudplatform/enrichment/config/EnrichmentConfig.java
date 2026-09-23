@@ -2,6 +2,7 @@ package com.fraudplatform.enrichment.config;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.timelimiter.TimeLimiter;
 import io.github.resilience4j.timelimiter.TimeLimiterConfig;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -30,8 +31,8 @@ public class EnrichmentConfig {
     }
 
     @Bean
-    public CircuitBreaker enrichmentCircuitBreaker() {
-        return CircuitBreaker.of("enrichment-redis",
+    public CircuitBreaker enrichmentCircuitBreaker(CircuitBreakerRegistry circuitBreakerRegistry) {
+        return circuitBreakerRegistry.circuitBreaker("enrichment-redis",
                 CircuitBreakerConfig.custom()
                         .failureRateThreshold(50)
                         .waitDurationInOpenState(Duration.ofSeconds(10))
