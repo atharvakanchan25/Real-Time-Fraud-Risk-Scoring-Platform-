@@ -4,11 +4,14 @@ import com.fraudplatform.casemanagement.entity.AuditLog;
 import com.fraudplatform.casemanagement.entity.FraudCase;
 import com.fraudplatform.casemanagement.repository.AuditLogRepository;
 import com.fraudplatform.casemanagement.repository.FraudCaseRepository;
+import com.fraudplatform.common.dto.FeedbackEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,6 +25,10 @@ public class CaseService {
 
     private final FraudCaseRepository caseRepository;
     private final AuditLogRepository auditLogRepository;
+    private final KafkaTemplate<String, FeedbackEvent> kafkaTemplate;
+
+    @Value("${kafka.topics.feedback-events}")
+    private String feedbackTopic;
 
     public Page<FraudCase> getCases(String status, Pageable pageable) {
         return status != null
@@ -53,6 +60,20 @@ public class CaseService {
 
         log.info("AUDIT: analyst={} caseId={} txId={} verdict={} at={}",
                 analyst, caseId, fraudCase.getTransactionId(), verdict, audit.getCreatedAt());
+
+        if ("CONFIRMED_FRAUD".equals(verdict)) {
+            FeedbackEvent event = FeedbackEvent.builder()
+                    .caseId(String.valueOf(caseId))
+                    .transactionId(fraudCase.getTransactionId())
+                    .userId(fraudCase.getUserId())
+                    .deviceId(fraudCase.getDeviceId())
+                    .verdict(verdict)
+                    .analyst(analyst)
+                    .decidedAt(Instant.now())
+                    .build();
+            kafkaTemplate.send(feedbackTopic, fraudCase.getUserId(), event);
+            log.info("FeedbackEvent published: userId={} deviceId={}", fraudCase.getUserId(), fraudCase.getDeviceId());
+        }
 
         return fraudCase;
     }

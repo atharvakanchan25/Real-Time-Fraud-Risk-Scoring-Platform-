@@ -32,6 +32,7 @@ public class FinalDecisionConsumer {
         FraudCase fraudCase = new FraudCase();
         fraudCase.setTransactionId(event.getTransactionId());
         fraudCase.setUserId(event.getUserId());
+        fraudCase.setDeviceId(event.getDeviceId());
         fraudCase.setInitialOutcome(event.getOutcome());
         fraudCase.setFraudScore(event.getFraudScore());
         fraudCase.setRuleTriggered(event.getRuleTriggered());

@@ -11,12 +11,13 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DecisionEvent {
+public class FinalDecisionEvent {
     private String transactionId;
-    private String decision;   // APPROVE | DECLINE | REVIEW
-    private double fraudScore;
-    private String ruleTriggered;
     private String userId;
     private String deviceId;
+    /** APPROVE | REVIEW | BLOCK */
+    private String outcome;
+    private double fraudScore;
+    private String ruleTriggered;
     private Instant decidedAt;
 }

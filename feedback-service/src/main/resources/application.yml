@@ -1,22 +1,19 @@
 spring:
   application:
     name: feedback-service
-  config:
-    import: "optional:configserver:http://localhost:8888"
-  datasource:
-    url: jdbc:postgresql://localhost:5432/frauddb
-    username: fraud
-    password: fraud
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
   kafka:
     bootstrap-servers: localhost:9092
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: feedback-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.fraudplatform.common.dto"
 
 server:
   port: 8087
@@ -25,4 +22,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+
+# How much to bump the risk score on confirmed fraud (0.0–1.0 added to existing score)
+feedback:
+  risk-bump: 0.5
+  reputation-ttl-seconds: 86400

@@ -22,6 +22,9 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "com.fraudplatform.common.dto"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
   security:
     users:
       - username: analyst1
@@ -47,3 +50,4 @@ management:
 kafka:
   topics:
     final-decisions: final-decisions
+    feedback-events: feedback-events

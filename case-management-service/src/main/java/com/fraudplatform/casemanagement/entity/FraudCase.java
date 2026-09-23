@@ -23,6 +23,9 @@ public class FraudCase {
     @Column(name = "user_id")
     private String userId;
 
+    @Column(name = "device_id")
+    private String deviceId;
+
     /** REVIEW | BLOCK */
     @Column(name = "initial_outcome", nullable = false)
     private String initialOutcome;
