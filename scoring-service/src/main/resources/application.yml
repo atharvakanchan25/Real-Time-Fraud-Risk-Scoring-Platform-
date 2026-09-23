@@ -45,9 +45,20 @@ management:
     export:
       prometheus:
         enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
   endpoint:
     health:
       show-details: always
+
+otel:
+  exporter:
+    otlp:
+      endpoint: http://localhost:4317
+  resource:
+    attributes:
+      service.name: scoring-service
 
 fraud:
   rules:

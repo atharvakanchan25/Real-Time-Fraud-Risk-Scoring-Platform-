@@ -23,6 +23,21 @@ management:
     web:
       exposure:
         include: health,info,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+
+otel:
+  exporter:
+    otlp:
+      endpoint: http://localhost:4317
+  resource:
+    attributes:
+      service.name: feedback-service
 
 # How much to bump the risk score on confirmed fraud (0.0–1.0 added to existing score)
 feedback:

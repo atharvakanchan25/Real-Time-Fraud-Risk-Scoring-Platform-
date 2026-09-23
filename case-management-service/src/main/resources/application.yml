@@ -46,6 +46,17 @@ management:
     export:
       prometheus:
         enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+
+otel:
+  exporter:
+    otlp:
+      endpoint: http://localhost:4317
+  resource:
+    attributes:
+      service.name: case-management-service
 
 kafka:
   topics:

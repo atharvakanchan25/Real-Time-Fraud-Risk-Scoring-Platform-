@@ -1,17 +1,20 @@
 spring:
   application:
     name: rules-service
-  config:
-    import: "optional:configserver:http://localhost:8888"
-  kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      group-id: rules-group
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+  datasource:
+    url: jdbc:postgresql://localhost:5432/frauddb
+    username: fraud
+    password: fraud
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  security:
+    user:
+      name: analyst
+      password: analyst
 
 server:
   port: 8083
@@ -20,4 +23,19 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+
+otel:
+  exporter:
+    otlp:
+      endpoint: http://localhost:4317
+  resource:
+    attributes:
+      service.name: rules-service

@@ -1,0 +1,83 @@
+groups:
+  - name: fraud-platform.kafka
+    rules:
+      # Fires when any consumer group's lag on any topic exceeds 1000 messages for 2 minutes
+      - alert: KafkaConsumerLagHigh
+        expr: |
+          sum by (topic, group) (
+            kafka_consumer_fetch_manager_records_lag{job=~".+-service"}
+          ) > 1000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Kafka consumer lag on {{ $labels.topic }}"
+          description: >
+            Consumer group {{ $labels.group }} on topic {{ $labels.topic }}
+            has lag {{ $value }} (threshold 1000) for more than 2 minutes.
+
+      # Fires when the DLQ topic has any messages (depth > 0)
+      - alert: DLQDepthNonZero
+        expr: |
+          sum by (topic) (
+            kafka_consumer_fetch_manager_records_lag{topic=~".*-dlq", job=~".+-service"}
+          ) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Messages in DLQ topic {{ $labels.topic }}"
+          description: >
+            DLQ topic {{ $labels.topic }} has {{ $value }} unprocessed messages.
+            Investigate dead-letter records immediately.
+
+  - name: fraud-platform.latency
+    rules:
+      # Fires when scoring-service p99 HTTP latency exceeds 150 ms
+      - alert: ScoringLatencyP99High
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, job) (
+              rate(http_server_requests_seconds_bucket{job="scoring-service"}[5m])
+            )
+          ) * 1000 > 150
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "scoring-service p99 latency above 150 ms"
+          description: >
+            scoring-service p99 response time is {{ $value | printf "%.1f" }} ms
+            (threshold 150 ms) over the last 5 minutes.
+
+      # Fires when ANY service p99 latency exceeds 150 ms
+      - alert: ServiceLatencyP99High
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, job) (
+              rate(http_server_requests_seconds_bucket{job=~".+-service"}[5m])
+            )
+          ) * 1000 > 150
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} p99 latency above 150 ms"
+          description: >
+            {{ $labels.job }} p99 response time is {{ $value | printf "%.1f" }} ms
+            (threshold 150 ms) over the last 5 minutes.
+
+  - name: fraud-platform.circuitbreaker
+    rules:
+      # Fires when a Resilience4j circuit breaker is OPEN
+      - alert: CircuitBreakerOpen
+        expr: |
+          resilience4j_circuitbreaker_state{state="open"} == 1
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Circuit breaker {{ $labels.name }} is OPEN on {{ $labels.job }}"
+          description: >
+            The {{ $labels.name }} circuit breaker on {{ $labels.job }} has been
+            OPEN for more than 30 seconds. Downstream calls are being short-circuited.
