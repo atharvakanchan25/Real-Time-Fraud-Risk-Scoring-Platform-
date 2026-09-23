@@ -1,6 +1,10 @@
 spring:
   application:
     name: scoring-service
+  data:
+    redis:
+      host: localhost
+      port: 6379
   datasource:
     url: jdbc:postgresql://localhost:5432/frauddb
     username: fraud
@@ -48,3 +52,8 @@ kafka:
   topics:
     payment-events: payment-events
     decision-events: decision-events
+
+enrichment:
+  velocity-window-seconds: 300
+  reputation-ttl-seconds: 3600
+  redis-timeout-ms: 5
