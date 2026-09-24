@@ -4,8 +4,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.SecureRandom;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Stub ML inference endpoint.
@@ -15,9 +15,12 @@ import java.util.concurrent.ThreadLocalRandom;
 @RestController
 public class InferenceController {
 
+    // SecureRandom is thread-safe and cryptographically strong — no fixed seed
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     @PostMapping("/infer")
     public Map<String, Object> infer(@RequestBody Map<String, Object> features) {
-        double score = ThreadLocalRandom.current().nextDouble();
+        double score = SECURE_RANDOM.nextDouble();
         return Map.of(
                 "fraudProbability", score,
                 "modelVersion",     "stub-1.0"

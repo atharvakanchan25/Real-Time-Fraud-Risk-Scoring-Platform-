@@ -69,7 +69,7 @@ public class ScoringMetrics {
                         case OPEN      -> openCounter.increment();
                         case CLOSED    -> closedCounter.increment();
                         case HALF_OPEN -> halfOpenCounter.increment();
-                        default        -> {}
+                        default        -> log.debug("CircuitBreaker '{}' transitioned to untracked state", name);
                     }
                 });
     }

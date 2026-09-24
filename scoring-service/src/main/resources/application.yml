@@ -6,9 +6,9 @@ spring:
       host: localhost
       port: 6379
   datasource:
-    url: jdbc:postgresql://localhost:5432/frauddb
-    username: fraud
-    password: fraud
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/frauddb}
+    username: ${SPRING_DATASOURCE_USERNAME:fraud}
+    password: ${SPRING_DATASOURCE_PASSWORD:fraud}
   jpa:
     hibernate:
       ddl-auto: update
@@ -16,7 +16,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: scoring-group
       auto-offset-reset: earliest

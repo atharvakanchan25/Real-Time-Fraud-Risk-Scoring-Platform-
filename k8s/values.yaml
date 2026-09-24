@@ -8,14 +8,15 @@ global:
 secrets:
   postgres:
     username: fraud
-    password: fraud
+    # Override: --set secrets.postgres.password=<strong-password>
+    password: ""
   kafka:
     bootstrapServers: "kafka:9092"
   redis:
     host: redis
     port: "6379"
-  # Override in prod: --set secrets.rulesAnalystPassword=<strong-password>
-  rulesAnalystPassword: analyst
+  # Override: --set secrets.rulesAnalystPassword=<strong-password>
+  rulesAnalystPassword: ""
 
 # ── Observability ─────────────────────────────────────────────────────────────
 otel:

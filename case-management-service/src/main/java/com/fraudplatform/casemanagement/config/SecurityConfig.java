@@ -39,6 +39,12 @@ public class SecurityConfig {
         return manager;
     }
 
+    /**
+     * CSRF is disabled intentionally: this is a stateless REST API authenticated
+     * via HTTP Basic. CSRF attacks require a browser session cookie — with
+     * STATELESS session management there is no session cookie to hijack.
+     * Reference: https://docs.spring.io/spring-security/reference/features/exploits/csrf.html#csrf-when-to-use
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http

@@ -58,7 +58,7 @@ public class SpelRulesEngine {
             Boolean result = expr.getValue(spelCtx, Boolean.class);
             return Boolean.TRUE.equals(result);
         } catch (Exception e) {
-            log.warn("Rule '{}' (id={}) expression error: {}", rule.getName(), rule.getId(), e.getMessage());
+            log.warn("Rule '{}' (id={}) expression error: {}", rule.getName(), rule.getId(), e.getMessage(), e);
             return false;
         }
     }

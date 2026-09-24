@@ -1,8 +1,6 @@
 package com.fraudplatform.scoring.client;
 
 import com.fraudplatform.enrichment.model.EnrichedFeatures;
-import com.fraudplatform.rules.dto.EvaluationRequest;
-import com.fraudplatform.rules.dto.EvaluationResponse;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,13 +8,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
- * Calls rules-service POST /rules/evaluate.
+ * Calls rules-service POST /rules/evaluate over HTTP.
+ * The request/response shapes are inlined here as Maps to avoid a compile-time
+ * dependency on the rules-service module (it is a separate deployable service).
  * Wrapped in a Resilience4j circuit breaker named "rules-service".
- * Falls back to {@link Optional#empty()} so scoring-service can fall back to
- * its embedded FraudRulesEngine.
  */
 @Slf4j
 @Component
@@ -29,36 +29,38 @@ public class RulesServiceClient {
     }
 
     @CircuitBreaker(name = "rules-service", fallbackMethod = "fallback")
-    public Optional<EvaluationResponse> evaluate(String userId, BigDecimal amount,
-                                                  String merchantId, String deviceId,
-                                                  String ipAddress, String cardCountry,
-                                                  EnrichedFeatures features) {
-        EvaluationRequest req = new EvaluationRequest();
-        req.setUserId(userId);
-        req.setAmount(amount);
-        req.setMerchantId(merchantId);
-        req.setDeviceId(deviceId);
-        req.setIpAddress(ipAddress);
-        req.setCardCountry(cardCountry);
-        req.setVelocityCount(features.velocityCount());
-        req.setDeviceRiskFlags(features.deviceRiskFlags());
-        req.setIpRiskFlags(features.ipRiskFlags());
+    public Optional<Map<String, Object>> evaluate(String userId, BigDecimal amount,
+                                                   String merchantId, String deviceId,
+                                                   String ipAddress, String cardCountry,
+                                                   EnrichedFeatures features) {
+        Map<String, Object> req = Map.of(
+                "userId",          userId,
+                "amount",          amount,
+                "merchantId",      merchantId,
+                "deviceId",        deviceId,
+                "ipAddress",       ipAddress,
+                "cardCountry",     cardCountry,
+                "velocityCount",   features.velocityCount(),
+                "deviceRiskFlags", features.deviceRiskFlags(),
+                "ipRiskFlags",     features.ipRiskFlags()
+        );
 
-        EvaluationResponse response = restClient.post()
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = restClient.post()
                 .uri("/rules/evaluate")
                 .body(req)
                 .retrieve()
-                .body(EvaluationResponse.class);
+                .body(Map.class);
 
         return Optional.ofNullable(response);
     }
 
     @SuppressWarnings("unused")
-    private Optional<EvaluationResponse> fallback(String userId, BigDecimal amount,
-                                                   String merchantId, String deviceId,
-                                                   String ipAddress, String cardCountry,
-                                                   EnrichedFeatures features, Throwable t) {
-        log.warn("rules-service circuit open or failed ({}): falling back to embedded engine", t.getMessage());
+    private Optional<Map<String, Object>> fallback(String userId, BigDecimal amount,
+                                                    String merchantId, String deviceId,
+                                                    String ipAddress, String cardCountry,
+                                                    EnrichedFeatures features, Throwable t) {
+        log.warn("rules-service circuit open or failed ({}): falling back to embedded engine", t.getMessage(), t);
         return Optional.empty();
     }
 }

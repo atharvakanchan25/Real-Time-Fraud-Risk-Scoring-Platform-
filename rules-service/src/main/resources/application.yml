@@ -2,9 +2,9 @@ spring:
   application:
     name: rules-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/frauddb
-    username: fraud
-    password: fraud
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/frauddb}
+    username: ${SPRING_DATASOURCE_USERNAME:fraud}
+    password: ${SPRING_DATASOURCE_PASSWORD:fraud}
   jpa:
     hibernate:
       ddl-auto: update
@@ -13,8 +13,8 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   security:
     user:
-      name: analyst
-      password: analyst
+      name: ${RULES_ANALYST_USER:analyst}
+      password: ${RULES_ANALYST_PASSWORD:analyst}
 
 server:
   port: 8083

@@ -38,6 +38,7 @@ services:
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic decision-events   --partitions 6 --replication-factor 1 &&
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic final-decisions   --partitions 6 --replication-factor 1 &&
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic payment-events-dlq --partitions 6 --replication-factor 1 &&
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic feedback-events    --partitions 6 --replication-factor 1 &&
       echo 'Topics created.'
       "
     restart: "no"
@@ -48,9 +49,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: frauddb
-      POSTGRES_USER: fraud
-      POSTGRES_PASSWORD: fraud
+      POSTGRES_DB: ${POSTGRES_DB:-frauddb}
+      POSTGRES_USER: ${POSTGRES_USER:-fraud}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fraud}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -129,7 +130,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana_data:/var/lib/grafana
