@@ -6,6 +6,22 @@ Built with Java 17, Spring Boot 3, Apache Kafka, Redis, and PostgreSQL.
 
 ---
 
+## Architecture Diagram
+
+![Architecture Diagram](docs/architecture.png)
+
+> Shows all 8 microservices, Kafka topics, PostgreSQL, Redis, and the observability stack (Jaeger, Prometheus, Grafana) and how they connect to each other.
+
+---
+
+## Transaction Flowchart
+
+![Transaction Flowchart](docs/flowchart.png)
+
+> Traces the full journey of a single payment — from the moment it arrives at the API, through enrichment, rules evaluation, ML scoring, and the final APPROVE / REVIEW / BLOCK decision.
+
+---
+
 ## What does this system do?
 
 When someone makes a payment, this platform:
@@ -290,6 +306,7 @@ fraud-platform/
 ├── feedback-service/           Spring Boot service — analyst feedback loop
 ├── ml-inference-service/       ML model server (runs in Docker)
 ├── common/                     Shared DTOs used by all services
+├── docs/                       Architecture diagram and flowchart images
 ├── observability/              Prometheus config, Grafana dashboards
 ├── k8s/                        Helm chart for Kubernetes deployment
 ├── load-test/                  k6 load test scripts
