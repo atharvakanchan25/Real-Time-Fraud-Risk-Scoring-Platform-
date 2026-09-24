@@ -1,0 +1,16 @@
+{{- include "fraud-platform.microservice" (dict
+    "name"      "rules-service"
+    "component" "rules"
+    "cfg"       .Values.services.rules
+    "port"      .Values.services.rules.port
+    "extraEnv"  (list
+        (dict "name" "SPRING_DATASOURCE_URL"
+              "value" "jdbc:postgresql://postgres:5432/frauddb")
+        (dict "name" "SPRING_SECURITY_USER_NAME"
+              "value" "analyst")
+        (dict "name" "SPRING_SECURITY_USER_PASSWORD"
+              "valueFrom" (dict "secretKeyRef"
+                  (dict "name" "fraud-platform-secrets" "key" "rules-analyst-password")))
+    )
+    "root"      .
+) }}

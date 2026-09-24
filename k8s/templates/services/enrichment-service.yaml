@@ -1,0 +1,15 @@
+{{- include "fraud-platform.microservice" (dict
+    "name"      "enrichment-service"
+    "component" "enrichment"
+    "cfg"       .Values.services.enrichment
+    "port"      .Values.services.enrichment.port
+    "extraEnv"  (list
+        (dict "name" "ENRICHMENT_VELOCITY_WINDOW_SECONDS"
+              "value" "300")
+        (dict "name" "ENRICHMENT_REPUTATION_TTL_SECONDS"
+              "value" "3600")
+        (dict "name" "ENRICHMENT_REDIS_TIMEOUT_MS"
+              "value" "5")
+    )
+    "root"      .
+) }}

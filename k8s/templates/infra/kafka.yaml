@@ -1,0 +1,145 @@
+{{- if not .Values.kafka.useManaged }}
+# ── Kafka (KRaft, single-broker for dev / 3-broker for prod) ──────────────────
+# For AWS MSK: set kafka.useManaged=true and kafka.mskBootstrapServers in values.
+# MSK notes:
+#   - Use MSK Serverless or a 3-broker kafka.m5.large cluster (Multi-AZ).
+#   - Enable IAM auth: set KAFKA_CFG_SASL_MECHANISM=AWS_MSK_IAM in each service.
+#   - Replace kafka-bootstrap-servers secret with your MSK endpoint.
+#   - MSK handles broker upgrades, storage scaling, and replication automatically.
+#   - Recommended: enable MSK Connect for Kafka lag metrics → CloudWatch.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  labels:
+    {{- include "fraud-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kafka
+spec:
+  serviceName: kafka
+  replicas: {{ .Values.kafka.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: kafka
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: apache/kafka:3.7.0
+          ports:
+            - containerPort: 9092
+              name: client
+            - containerPort: 9093
+              name: controller
+          env:
+            - name: KAFKA_NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name  # kafka-0, kafka-1, kafka-2
+            - name: KAFKA_PROCESS_ROLES
+              value: "broker,controller"
+            - name: KAFKA_LISTENERS
+              value: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://$(POD_NAME).kafka.$(NAMESPACE).svc.cluster.local:9092"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: "0@kafka-0.kafka:9093,1@kafka-1.kafka:9093,2@kafka-2.kafka:9093"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: "PLAINTEXT"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "3"
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "3"
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "2"
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: "false"
+            - name: CLUSTER_ID
+              value: "fraud-platform-cluster-01"
+            - name: KAFKA_LOG_RETENTION_HOURS
+              value: "168"
+          resources:
+            {{- toYaml .Values.kafka.resources | nindent 12 }}
+          readinessProbe:
+            exec:
+              command: ["/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 5
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/kafka/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.kafka.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.kafka.storage }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  labels:
+    {{- include "fraud-platform.labels" . | nindent 4 }}
+spec:
+  clusterIP: None   # headless — pods address each other by DNS
+  selector:
+    app.kubernetes.io/component: kafka
+  ports:
+    - name: client
+      port: 9092
+    - name: controller
+      port: 9093
+---
+# Topic initialisation Job — runs once after Kafka is ready
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-topic-init
+  labels:
+    {{- include "fraud-platform.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: kafka-init
+          image: apache/kafka:3.7.0
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              BOOTSTRAP=kafka-0.kafka:9092
+              for TOPIC in payment-events enriched-transactions rule-signals fraud-scores \
+                           decision-events final-decisions feedback-events \
+                           payment-events-dlq; do
+                /opt/kafka/bin/kafka-topics.sh \
+                  --bootstrap-server $BOOTSTRAP \
+                  --create --if-not-exists \
+                  --topic $TOPIC \
+                  --partitions 6 \
+                  --replication-factor 3
+              done
+              echo "All topics created."
+{{- end }}

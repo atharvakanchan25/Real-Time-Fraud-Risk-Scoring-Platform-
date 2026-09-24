@@ -1,0 +1,17 @@
+{{- include "fraud-platform.microservice" (dict
+    "name"      "case-management-service"
+    "component" "caseManagement"
+    "cfg"       .Values.services.caseManagement
+    "port"      .Values.services.caseManagement.port
+    "extraEnv"  (list
+        (dict "name" "SPRING_DATASOURCE_URL"
+              "value" "jdbc:postgresql://postgres:5432/frauddb")
+        (dict "name" "KAFKA_TOPICS_FINAL_DECISIONS"
+              "value" "final-decisions")
+        (dict "name" "KAFKA_TOPICS_FEEDBACK_EVENTS"
+              "value" "feedback-events")
+        (dict "name" "SPRING_KAFKA_CONSUMER_GROUP_ID"
+              "value" "case-management-group")
+    )
+    "root"      .
+) }}

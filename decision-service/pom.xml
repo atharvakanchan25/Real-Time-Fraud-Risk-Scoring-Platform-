@@ -12,7 +12,7 @@
 
     <artifactId>decision-service</artifactId>
     <name>decision-service</name>
-    <description>Applies thresholds and emits final APPROVE/DECLINE/REVIEW decisions</description>
+    <description>Applies score thresholds and emits final APPROVE/REVIEW/BLOCK decisions</description>
 
     <dependencies>
         <dependency>
@@ -24,12 +24,21 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-config</artifactId>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
     </dependencies>
 

@@ -1,0 +1,24 @@
+{{- include "fraud-platform.microservice" (dict
+    "name"      "ingestion-service"
+    "component" "ingestion"
+    "cfg"       .Values.services.ingestion
+    "port"      .Values.services.ingestion.port
+    "root"      .
+) }}
+---
+# External LoadBalancer so k6 can reach ingestion from outside the cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingestion-service-lb
+  labels:
+    {{- include "fraud-platform.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/component: ingestion
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.services.ingestion.port }}

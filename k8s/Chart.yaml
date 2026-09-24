@@ -1,0 +1,12 @@
+apiVersion: v2
+name: fraud-platform
+description: Real-time fraud scoring platform — all seven microservices + infra
+type: application
+version: 1.0.0
+appVersion: "0.0.1-SNAPSHOT"
+keywords:
+  - fraud
+  - kafka
+  - spring-boot
+maintainers:
+  - name: fraud-platform-team

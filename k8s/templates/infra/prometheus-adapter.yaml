@@ -1,0 +1,52 @@
+# Prometheus Adapter — custom metric rules for Kafka consumer-lag HPA
+#
+# Prerequisites:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm install prometheus-adapter prometheus-community/prometheus-adapter \
+#     --namespace monitoring \
+#     --set prometheus.url=http://prometheus.default.svc \
+#     --set prometheus.port=9090 \
+#     -f k8s/prometheus-adapter-values.yaml
+#
+# The ConfigMap below is mounted by the adapter to expose the
+# `kafka_consumer_lag` external metric consumed by the HPAs in
+# _microservice.tpl.
+#
+# Metric source: kafka_consumergroup_lag from the Kafka JMX exporter
+# (or kminion / kafka-lag-exporter — see prometheus.yml scrape config).
+# PromQL: sum(kafka_consumergroup_lag{topic="<topic>",consumergroup="<group>"})
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-adapter-config
+  namespace: monitoring
+  labels:
+    {{- include "fraud-platform.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    rules:
+      # ── Kafka consumer lag (external metric) ──────────────────────────────
+      # Exposed as: kafka_consumer_lag{topic, group}
+      # Used by HPA specs in _microservice.tpl (type: External)
+      - seriesQuery: 'kafka_consumergroup_lag{topic!="",consumergroup!=""}'
+        resources:
+          overrides:
+            namespace: { resource: namespace }
+        name:
+          matches: "kafka_consumergroup_lag"
+          as: "kafka_consumer_lag"
+        metricsQuery: >
+          sum(<<.Series>>{<<.LabelMatchers>>})
+          by (topic, consumergroup)
+
+      # ── HTTP request rate per pod (for ingestion HPA supplement) ──────────
+      - seriesQuery: 'http_server_requests_seconds_count{namespace!="",pod!=""}'
+        resources:
+          overrides:
+            namespace: { resource: namespace }
+            pod:       { resource: pod }
+        name:
+          matches: "http_server_requests_seconds_count"
+          as: "http_requests_per_second"
+        metricsQuery: >
+          rate(<<.Series>>{<<.LabelMatchers>>}[2m])

@@ -1,0 +1,15 @@
+{{- include "fraud-platform.microservice" (dict
+    "name"      "feedback-service"
+    "component" "feedback"
+    "cfg"       .Values.services.feedback
+    "port"      .Values.services.feedback.port
+    "extraEnv"  (list
+        (dict "name" "SPRING_KAFKA_CONSUMER_FEEDBACK_TOPIC"
+              "value" "feedback-events")
+        (dict "name" "SPRING_KAFKA_CONSUMER_GROUP_ID"
+              "value" "feedback-group")
+        (dict "name" "FEEDBACK_REPUTATION_TTL_SECONDS"
+              "value" "86400")
+    )
+    "root"      .
+) }}

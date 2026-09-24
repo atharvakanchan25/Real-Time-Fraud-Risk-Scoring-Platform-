@@ -1,0 +1,7 @@
+{{- include "fraud-platform.microservice" (dict
+    "name"      "ml-inference-service"
+    "component" "mlInference"
+    "cfg"       .Values.services.mlInference
+    "port"      .Values.services.mlInference.port
+    "root"      .
+) }}

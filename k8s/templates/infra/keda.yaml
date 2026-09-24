@@ -1,0 +1,89 @@
+# KEDA ScaledObjects — Kafka consumer-lag autoscaling
+#
+# KEDA is the recommended approach for Kafka-lag-based HPA because it has a
+# native Kafka trigger that queries the broker directly (no Prometheus Adapter
+# needed). The CPU-based HPA in _microservice.tpl still applies; KEDA creates
+# its own HPA and the two coexist — Kubernetes takes the higher replica count.
+#
+# Prerequisites:
+#   helm repo add kedacore https://kedacore.github.io/charts
+#   helm install keda kedacore/keda --namespace keda --create-namespace
+#
+# If kafka.useManaged=true (MSK), replace bootstrapServers with the MSK
+# endpoint and add a TriggerAuthentication for IAM/SASL credentials.
+{{- $bs := .Values.secrets.kafka.bootstrapServers }}
+
+---
+# ── scoring-service ───────────────────────────────────────────────────────────
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: scoring-service-keda
+  labels:
+    {{- include "fraud-platform.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: scoring-service
+  minReplicaCount: {{ .Values.services.scoring.hpa.minReplicas }}
+  maxReplicaCount: {{ .Values.services.scoring.hpa.maxReplicas }}
+  # Cool-down: wait 5 min before scaling down to avoid thrash
+  cooldownPeriod: 300
+  # Poll lag every 15 s
+  pollingInterval: 15
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: {{ $bs | quote }}
+        consumerGroup: scoring-group
+        topic: payment-events
+        # Scale up when lag per replica exceeds this value
+        lagThreshold: {{ .Values.services.scoring.hpa.kafkaLagThreshold | quote }}
+        offsetResetPolicy: earliest
+
+---
+# ── decision-service ──────────────────────────────────────────────────────────
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: decision-service-keda
+  labels:
+    {{- include "fraud-platform.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: decision-service
+  minReplicaCount: {{ .Values.services.decision.hpa.minReplicas }}
+  maxReplicaCount: {{ .Values.services.decision.hpa.maxReplicas }}
+  cooldownPeriod: 300
+  pollingInterval: 15
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: {{ $bs | quote }}
+        consumerGroup: decision-group
+        topic: decision-events
+        lagThreshold: {{ .Values.services.decision.hpa.kafkaLagThreshold | quote }}
+        offsetResetPolicy: earliest
+
+---
+# ── feedback-service ──────────────────────────────────────────────────────────
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: feedback-service-keda
+  labels:
+    {{- include "fraud-platform.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: feedback-service
+  minReplicaCount: {{ .Values.services.feedback.hpa.minReplicas }}
+  maxReplicaCount: {{ .Values.services.feedback.hpa.maxReplicas }}
+  cooldownPeriod: 300
+  pollingInterval: 15
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: {{ $bs | quote }}
+        consumerGroup: feedback-group
+        topic: feedback-events
+        lagThreshold: {{ .Values.services.feedback.hpa.kafkaLagThreshold | quote }}
+        offsetResetPolicy: earliest

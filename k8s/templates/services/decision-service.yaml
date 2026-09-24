@@ -1,0 +1,21 @@
+{{- include "fraud-platform.microservice" (dict
+    "name"      "decision-service"
+    "component" "decision"
+    "cfg"       .Values.services.decision
+    "port"      .Values.services.decision.port
+    "extraEnv"  (list
+        (dict "name" "SPRING_DATASOURCE_URL"
+              "value" "jdbc:postgresql://postgres:5432/frauddb")
+        (dict "name" "KAFKA_TOPICS_DECISION_EVENTS"
+              "value" "decision-events")
+        (dict "name" "KAFKA_TOPICS_FINAL_DECISIONS"
+              "value" "final-decisions")
+        (dict "name" "SPRING_KAFKA_CONSUMER_GROUP_ID"
+              "value" "decision-group")
+        (dict "name" "DECISION_THRESHOLDS_APPROVE_BELOW"
+              "value" "30")
+        (dict "name" "DECISION_THRESHOLDS_BLOCK_ABOVE"
+              "value" "70")
+    )
+    "root"      .
+) }}

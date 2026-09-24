@@ -1,0 +1,27 @@
+{{- include "fraud-platform.microservice" (dict
+    "name"      "scoring-service"
+    "component" "scoring"
+    "cfg"       .Values.services.scoring
+    "port"      .Values.services.scoring.port
+    "extraEnv"  (list
+        (dict "name" "SPRING_DATASOURCE_URL"
+              "value" "jdbc:postgresql://postgres:5432/frauddb")
+        (dict "name" "FRAUD_RULES_AMOUNT_THRESHOLD"
+              "value" "10000")
+        (dict "name" "FRAUD_RULES_VELOCITY_MAX_COUNT"
+              "value" "5")
+        (dict "name" "ML_INFERENCE_URL"
+              "value" "http://ml-inference-service:8088")
+        (dict "name" "RULES_SERVICE_URL"
+              "value" "http://rules-service:8083")
+        (dict "name" "KAFKA_TOPICS_PAYMENT_EVENTS"
+              "value" "payment-events")
+        (dict "name" "KAFKA_TOPICS_DECISION_EVENTS"
+              "value" "decision-events")
+        (dict "name" "KAFKA_TOPICS_PAYMENT_EVENTS_DLQ"
+              "value" "payment-events-dlq")
+        (dict "name" "SPRING_KAFKA_CONSUMER_GROUP_ID"
+              "value" "scoring-group")
+    )
+    "root"      .
+) }}

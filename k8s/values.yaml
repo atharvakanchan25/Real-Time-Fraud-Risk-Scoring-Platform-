@@ -1,0 +1,148 @@
+# ── Global ────────────────────────────────────────────────────────────────────
+global:
+  imageRegistry: ""          # e.g. "123456789.dkr.ecr.us-east-1.amazonaws.com/"
+  imageTag: "0.0.1-SNAPSHOT"
+  imagePullPolicy: IfNotPresent
+
+# ── Credentials (override with --set or a sealed-secret in prod) ──────────────
+secrets:
+  postgres:
+    username: fraud
+    password: fraud
+  kafka:
+    bootstrapServers: "kafka:9092"
+  redis:
+    host: redis
+    port: "6379"
+  # Override in prod: --set secrets.rulesAnalystPassword=<strong-password>
+  rulesAnalystPassword: analyst
+
+# ── Observability ─────────────────────────────────────────────────────────────
+otel:
+  endpoint: "http://jaeger:4317"
+
+# ── Per-service configuration ─────────────────────────────────────────────────
+services:
+  ingestion:
+    port: 8081
+    replicas: 3
+    resources:
+      requests: { cpu: "250m", memory: "384Mi" }
+      limits:   { cpu: "1",    memory: "768Mi" }
+    hpa:
+      minReplicas: 3
+      maxReplicas: 12
+      cpuUtilization: 70
+
+  enrichment:
+    port: 8082
+    replicas: 2
+    resources:
+      requests: { cpu: "200m", memory: "256Mi" }
+      limits:   { cpu: "500m", memory: "512Mi" }
+    hpa:
+      minReplicas: 2
+      maxReplicas: 8
+      cpuUtilization: 70
+
+  rules:
+    port: 8083
+    replicas: 2
+    resources:
+      requests: { cpu: "200m", memory: "256Mi" }
+      limits:   { cpu: "500m", memory: "512Mi" }
+    hpa:
+      minReplicas: 2
+      maxReplicas: 6
+      cpuUtilization: 70
+
+  scoring:
+    port: 8084
+    replicas: 3
+    resources:
+      requests: { cpu: "500m", memory: "512Mi" }
+      limits:   { cpu: "2",    memory: "1Gi" }
+    hpa:
+      minReplicas: 3
+      maxReplicas: 16
+      cpuUtilization: 65
+      # KEDA-style lag threshold (used in HPA external metric via Prometheus adapter)
+      kafkaLagThreshold: 5000
+      kafkaTopic: "payment-events"
+      kafkaConsumerGroup: "scoring-group"
+
+  decision:
+    port: 8085
+    replicas: 2
+    resources:
+      requests: { cpu: "250m", memory: "384Mi" }
+      limits:   { cpu: "1",    memory: "768Mi" }
+    hpa:
+      minReplicas: 2
+      maxReplicas: 8
+      cpuUtilization: 70
+      kafkaLagThreshold: 3000
+      kafkaTopic: "decision-events"
+      kafkaConsumerGroup: "decision-group"
+
+  caseManagement:
+    port: 8086
+    replicas: 2
+    resources:
+      requests: { cpu: "200m", memory: "256Mi" }
+      limits:   { cpu: "500m", memory: "512Mi" }
+    hpa:
+      minReplicas: 2
+      maxReplicas: 6
+      cpuUtilization: 70
+
+  feedback:
+    port: 8087
+    replicas: 2
+    resources:
+      requests: { cpu: "150m", memory: "256Mi" }
+      limits:   { cpu: "500m", memory: "512Mi" }
+    hpa:
+      minReplicas: 2
+      maxReplicas: 6
+      cpuUtilization: 70
+      kafkaLagThreshold: 2000
+      kafkaTopic: "feedback-events"
+      kafkaConsumerGroup: "feedback-group"
+
+  mlInference:
+    port: 8088
+    replicas: 2
+    resources:
+      requests: { cpu: "500m", memory: "512Mi" }
+      limits:   { cpu: "2",    memory: "1Gi" }
+    hpa:
+      minReplicas: 2
+      maxReplicas: 8
+      cpuUtilization: 65
+
+# ── Infrastructure ─────────────────────────────────────────────────────────────
+kafka:
+  # Set useManaged: true and fill mskBootstrapServers to use AWS MSK instead
+  useManaged: false
+  mskBootstrapServers: ""
+  replicas: 3
+  storage: "20Gi"
+  storageClass: "gp3"
+  resources:
+    requests: { cpu: "500m", memory: "1Gi" }
+    limits:   { cpu: "2",    memory: "2Gi" }
+
+postgres:
+  storage: "20Gi"
+  storageClass: "gp3"
+  resources:
+    requests: { cpu: "250m", memory: "512Mi" }
+    limits:   { cpu: "1",    memory: "1Gi" }
+
+redis:
+  storage: "5Gi"
+  storageClass: "gp3"
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits:   { cpu: "500m", memory: "256Mi" }
